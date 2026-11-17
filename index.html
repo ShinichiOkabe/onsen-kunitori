@@ -1,0 +1,627 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="入った温泉を記録すると日本地図が湯の色に染まる、47都道府県の温泉制覇マップ。無料・登録不要。"><link rel="canonical" href="https://shinichiokabe.github.io/onsen-kunitori/"><meta property="og:type" content="website"><meta property="og:title" content="温泉国盗りマップ"><meta property="og:description" content="入った温泉を記録すると日本地図が湯の色に染まる、47都道府県の温泉制覇マップ。無料・登録不要。"><meta property="og:url" content="https://shinichiokabe.github.io/onsen-kunitori/"><meta property="og:image" content="https://shinichiokabe.github.io/onsen-kunitori/ogp.png"><meta name="twitter:card" content="summary_large_image"><style>body{margin:0;font-size:14px}[hidden]{display:none!important}img{max-width:100%}</style></head><body><title>温泉国盗りマップ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: 47 tiles laid out like the archipelago; tap a tile to open that prefecture's onsen map and log. */
+:root{
+  --bg:#eef1ef; --paper:#f8faf8; --ink:#1d2a2c; --muted:#66757a; --line:#cfd8d6;
+  --tile:#dde4e2; --tile-ink:#55666a;
+  --yu1:#9fd0c6; --yu2:#4fa597; --yu3:#1f6f68;   /* 湯の色: 1件 / 2-3件 / 4件以上 */
+  --seal:#c2402e; --seal-ink:#fff;
+  --r1:#2f9e5f; --r2:#d48a12; --r3:#8b43b5;   /* ランク: 初級 / 中級 / 上級 */
+  --font-display:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131b1c; --paper:#1a2425; --ink:#e4ecea; --muted:#93a4a5; --line:#2e3c3d;
+  --tile:#243031; --tile-ink:#8a9c9d;
+  --yu1:#2c5a54; --yu2:#3a8a7e; --yu3:#6cc3b3;
+  --seal:#e0624d; --seal-ink:#1a0e0b; --r1:#5cc98a; --r2:#f0ae3c; --r3:#c08ae6; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131b1c; --paper:#1a2425; --ink:#e4ecea; --muted:#93a4a5; --line:#2e3c3d;
+  --tile:#243031; --tile-ink:#8a9c9d;
+  --yu1:#2c5a54; --yu2:#3a8a7e; --yu3:#6cc3b3;
+  --seal:#e0624d; --seal-ink:#1a0e0b; --r1:#5cc98a; --r2:#f0ae3c; --r3:#c08ae6; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--font-display);font-weight:800;font-size:clamp(26px,5vw,38px);margin:0;letter-spacing:.06em;text-wrap:balance}
+.sub{margin:2px 0 0;color:var(--muted);font-size:13px}
+.score{display:flex;gap:18px;align-items:flex-end}
+.score div{display:flex;flex-direction:column;align-items:flex-end}
+.score b{font-family:var(--font-display);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.score b small{font-size:15px;color:var(--muted);font-weight:600}
+.score span{font-size:11px;color:var(--muted);letter-spacing:.1em}
+.bar{height:6px;background:var(--tile);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--yu3);width:0;transition:width .6s}
+.note{font-size:12.5px;color:var(--muted);background:var(--paper);border:1px dashed var(--line);border-radius:8px;padding:8px 12px}
+.mapbox{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:clamp(10px,3vw,16px)}
+.grid{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:clamp(2px,0.6cqi,5px);position:relative}
+.gridbox{container-type:inline-size}
+.tile{aspect-ratio:1;border:0;border-radius:6px;background:var(--tile);color:var(--tile-ink);
+  font-family:var(--font-body);font-weight:700;font-size:clamp(8px,2.5cqi,15px);letter-spacing:-.02em;white-space:nowrap;overflow:visible;cursor:pointer;position:relative;padding:0;line-height:1;min-width:0;
+  display:flex;align-items:center;justify-content:center;transition:transform .12s, box-shadow .12s}
+.tile:hover{transform:translateY(-2px);box-shadow:0 3px 8px rgb(0 0 0 / .15)}
+.tile:focus-visible{outline:2px solid var(--seal);outline-offset:2px}
+.tile.l1{background:var(--yu1);color:var(--ink)}
+.tile.l2{background:var(--yu2);color:#fff}
+.tile.l3{background:var(--yu3);color:#fff}
+:root[data-theme="dark"] .tile.l3{color:#0e1d1c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tile.l3{color:#0e1d1c}}
+.tile.w3{font-size:clamp(7px,1.75cqi,11px)}
+.tile .stamp{position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:50%;background:var(--seal);color:var(--seal-ink);
+  font-size:8px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.mapnote{position:absolute;font-size:11px;color:var(--muted)}
+h2{font-family:var(--font-display);font-size:19px;margin:0 0 10px;letter-spacing:.05em}
+.recent{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px}
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.log li{display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:baseline;padding:9px 0;border-top:1px solid var(--line)}
+.log li:first-child{border-top:0}
+.log time{font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.log .nm{min-width:0}
+.log .nm b{font-weight:700}
+.log .nm small{display:block;color:var(--muted);font-size:12px}
+.log .pf{font-size:12px;color:var(--yu3);font-weight:700;white-space:nowrap}
+.empty{color:var(--muted);font-size:14px;padding:6px 0}
+.log li.empty{display:block}
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgb(10 18 18 / .45);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(520px,100%);box-sizing:border-box;background:var(--bg);z-index:21;overflow-y:auto;
+  padding:calc(16px + env(safe-area-inset-top,0px)) max(18px,env(safe-area-inset-right,0px)) calc(32px + env(safe-area-inset-bottom,0px)) 18px;
+  box-shadow:-8px 0 30px rgb(0 0 0 / .2);display:flex;flex-direction:column;gap:16px}
+.dhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.dhead h3{font-family:var(--font-display);font-size:30px;margin:0;letter-spacing:.08em}
+.dhead p{margin:0;color:var(--muted);font-size:13px}
+.seal{display:inline-flex;align-items:center;gap:6px;color:var(--seal);font-weight:700;font-size:13px}
+.seal em{font-style:normal;width:26px;height:26px;border:2px solid var(--seal);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--font-display);transform:rotate(-8deg)}
+.close{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px;width:36px;height:36px;font-size:18px;cursor:pointer;flex:none}
+.pmap{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:8px}
+.pmap svg{display:block;width:100%;height:auto}
+.pmap .cap{font-size:11px;color:var(--muted);padding:2px 6px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px}
+form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+form label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+form .full{grid-column:1/-1}
+input,select,textarea{font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0;width:100%;box-sizing:border-box}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--yu2);outline-offset:1px}
+.btn{font:inherit;font-weight:700;border:0;border-radius:8px;padding:10px 14px;cursor:pointer;background:var(--yu3);color:#fff}
+:root[data-theme="dark"] .btn{color:#0e1d1c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn{color:#0e1d1c}}
+.btn.ghost{background:transparent;color:var(--yu3)!important;border:1.5px solid var(--yu3);display:inline-block}
+.brow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.ph{display:inline-block;margin-top:2px;font-size:12.5px;color:var(--yu3);font-weight:700;text-decoration:none}
+.ph:hover{text-decoration:underline}
+.ranks{display:flex;flex-wrap:wrap;gap:6px}
+.rk{font:inherit;font-size:13px;font-weight:700;border:1.5px solid var(--line);background:var(--paper);color:var(--muted);border-radius:999px;padding:5px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.rk i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.rk[aria-pressed="true"]{border-color:var(--ink);color:var(--ink);background:var(--bg)}
+.rk:focus-visible{outline:2px solid var(--yu2);outline-offset:2px}
+.rstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.rstat{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.rstat b{font-family:var(--font-display);font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums}
+.rstat b small{font-size:12px;color:var(--muted)}
+.rstat .mb{height:5px;border-radius:3px;background:var(--tile);overflow:hidden}
+.rstat .mb i{display:block;height:100%}
+.chip{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:0 6px;line-height:18px;color:#fff;white-space:nowrap;vertical-align:1px}
+:root[data-theme="dark"] .chip{color:#14100c}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .chip{color:#14100c}}
+.chip.c1{background:var(--r1)}.chip.c2{background:var(--r2)}.chip.c3{background:var(--r3)}.chip.c0{background:var(--muted)}
+.vgroup{display:flex;flex-direction:column;gap:2px;padding:10px 0;border-top:1px solid var(--line)}
+.vgroup:first-child{border-top:0}
+.vgroup h4{margin:0 0 4px;font-size:14px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.vgroup h4 button{font:inherit;font-size:12px;border:0;background:none;color:var(--yu3);cursor:pointer;padding:0}
+.vrow{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:baseline;font-size:14px}
+.vrow small{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sechead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.sechead h2{margin:0}
+.dbx{display:flex;flex-direction:column;gap:12px}
+.dbx ol{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.dbx ol li{padding-left:2px}
+.dbx code{font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 4px;word-break:break-all}
+.dbx .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dbx .row input{flex:1 1 200px}
+.dbx a:not(.btn){color:var(--yu3);font-weight:700}
+.dbx a.btn{text-decoration:none;display:inline-block}
+.dbx .ok{display:flex;align-items:center;gap:8px;font-weight:700}
+.dbx .ok i{width:10px;height:10px;border-radius:50%;background:var(--r1)}
+.btn.paypal{display:inline-flex;align-items:center;gap:8px;text-decoration:none;background:#ffc439;color:#111!important}
+.btn.paypal:hover{background:#f2ba36}
+.btn:disabled{opacity:.5;cursor:default}
+.del{font:inherit;font-size:12px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;padding:2px 8px;cursor:pointer}
+.del.sure{border-color:var(--seal);color:var(--seal)}
+.msg{font-size:13px;color:var(--seal);min-height:1em}
+@media (max-width:480px){form{grid-template-columns:1fr}.log li{grid-template-columns:82px 1fr}.log .pf{grid-column:2}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>温泉国盗りマップ</h1>
+      <p class="sub">都道府県をタップして、入った温泉を記録しよう</p>
+    </div>
+    <div class="score">
+      <div><b id="sPref">0<small>/47</small></b><span>制覇</span></div>
+      <div><b id="sFac">0</b><span>施設</span></div>
+    </div>
+  </header>
+  <div class="bar"><i id="barFill"></i></div>
+  <p class="note" id="storeNote">記録を読み込んでいます…</p>
+
+  <section class="mapbox" aria-label="日本地図">
+    <div class="gridbox"><div class="grid" id="grid"></div></div>
+    <div class="legend">
+      <span><i style="background:var(--tile)"></i>未踏</span>
+      <span><i style="background:var(--yu1)"></i>1施設</span>
+      <span><i style="background:var(--yu2)"></i>2〜3施設</span>
+      <span><i style="background:var(--yu3)"></i>4施設以上</span>
+    </div>
+  </section>
+
+  <section class="recent">
+    <div class="sechead"><h2>温泉地ランク</h2><div class="ranks" id="rankBar"></div></div>
+    <div class="rstats" id="rstats"></div>
+    <p class="sub" style="margin:10px 0 0">初級：名の知れた温泉街で行きやすい ／ 中級：少し足をのばす名湯 ／ 上級：山奥・離島の秘湯。ランクを選ぶと、県の温泉マップと一覧がそのランクだけになります。</p>
+  </section>
+
+  <section class="recent">
+    <div class="sechead"><h2>廻った温泉地一覧</h2><span class="sub" id="vCount"></span></div>
+    <div id="visited"></div>
+  </section>
+
+  <section class="recent">
+    <h2>最近の湯めぐり</h2>
+    <ul class="log" id="recent"></ul>
+  </section>
+
+  <section class="recent" id="saveSec">
+    <div class="sechead"><h2>保存先</h2><span class="sub" id="dbxState"></span></div>
+    <div id="dbxBox"></div>
+  </section>
+
+  <section class="recent support" id="supportSec" hidden>
+    <div class="sechead"><h2>作者を応援する</h2></div>
+    <p class="sub" style="margin:0 0 12px">寄付は任意です。寄付をしなくても、すべての機能を無料で使えます。</p>
+    <a class="btn paypal" id="paypalBtn" href="#" target="_blank" rel="noopener noreferrer">☕ このアプリを応援する（PayPal）</a>
+  </section>
+
+  <section class="recent">
+    <h2>バックアップ</h2>
+    <p class="sub" style="margin:0 0 10px">記録をファイルに書き出して保管できます。機種変更やブラウザを変えたときは、そのファイルを読み込めば元に戻ります。</p>
+    <div class="brow">
+      <button class="btn" id="bExport" type="button">バックアップを書き出す</button>
+      <label class="btn ghost" for="bImport">ファイルから読み込む</label>
+      <input id="bImport" type="file" accept="application/json,.json" hidden>
+      <span class="msg" id="bMsg"></span>
+    </div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-modal="true" role="dialog" aria-labelledby="dName"></aside>
+
+<script>
+// [番号, 名前, 短縮, col, row, colspan, rowspan, 主な温泉地 [名, 緯度, 経度]]
+const PREFS=[
+[1,"北海道","北海道",12,0,2,2,[["登別",42.50,141.15],["定山渓",42.97,141.17],["洞爺湖",42.57,140.82],["阿寒湖",43.43,144.10],["湯の川",41.78,140.79],["層雲峡",43.72,142.95],["十勝川",43.00,143.30],["川湯",43.64,144.43],["ニセコ",42.86,140.65],["朝里川",43.15,141.04],["ウトロ",44.07,144.99],["白金",43.47,142.64],["豊富",45.10,141.83],["然別湖",43.27,143.11],["カルルス",42.53,141.11]]],
+[2,"青森","青森",12,2,1,1,[["酸ヶ湯",40.65,140.85],["蔦",40.59,140.95],["浅虫",40.90,140.86],["不老ふ死",40.60,139.89],["大鰐",40.52,140.57],["嶽",40.62,140.30],["古牧",40.68,141.37],["下風呂",41.53,140.97],["薬研",41.42,141.03],["青荷",40.59,140.73]]],
+[3,"岩手","岩手",12,3,1,1,[["花巻",39.43,141.02],["鉛",39.37,140.94],["大沢",39.40,140.98],["繋",39.69,141.01],["夏油",39.20,140.88],["網張",39.80,140.96],["松川",39.91,140.90],["藤七",39.94,140.86],["須川",38.96,140.76],["ほっとゆだ",39.31,140.78],["国見",39.75,140.86]]],
+[4,"宮城","宮城",12,4,1,1,[["鳴子",38.74,140.72],["川渡",38.73,140.78],["中山平",38.75,140.64],["秋保",38.23,140.70],["作並",38.31,140.62],["遠刈田",38.12,140.55],["青根",38.10,140.52],["鎌先",38.05,140.60],["小原",38.03,140.53],["峩々",38.14,140.47],["松島",38.37,141.06]]],
+[5,"秋田","秋田",11,3,1,1,[["乳頭",39.80,140.79],["玉川",39.96,140.73],["後生掛",39.97,140.80],["田沢湖高原",39.77,140.82],["男鹿",39.95,139.72],["秋の宮",38.94,140.62],["泥湯",38.93,140.66],["小安峡",38.98,140.67],["大湯",40.27,140.80],["森吉山",39.97,140.55]]],
+[6,"山形","山形",11,4,1,1,[["銀山",38.57,140.53],["蔵王",38.17,140.40],["かみのやま",38.15,140.27],["天童",38.36,140.38],["肘折",38.61,140.16],["赤湯",38.04,140.15],["小野川",37.85,140.08],["白布",37.81,140.11],["湯野浜",38.80,139.73],["湯田川",38.70,139.82],["あつみ",38.62,139.60],["瀬見",38.79,140.48]]],
+[7,"福島","福島",11,5,2,1,[["飯坂",37.83,140.44],["高湯",37.74,140.26],["土湯",37.68,140.30],["岳",37.62,140.33],["磐梯熱海",37.49,140.24],["東山",37.49,139.96],["芦ノ牧",37.40,139.94],["湯野上",37.26,139.92],["二岐",37.24,139.98],["甲子",37.16,140.04],["母畑",37.26,140.45],["いわき湯本",37.01,140.84]]],
+[8,"茨城","茨城",12,6,1,1,[["袋田",36.76,140.41],["五浦",36.84,140.79],["磯原",36.79,140.75],["大洗",36.31,140.57],["筑波山",36.22,140.10],["御前山",36.56,140.30]]],
+[9,"栃木","栃木",11,6,1,1,[["鬼怒川",36.82,139.72],["川治",36.88,139.71],["湯西川",36.90,139.62],["川俣",36.91,139.52],["奥鬼怒",36.93,139.43],["日光湯元",36.80,139.42],["中禅寺",36.74,139.49],["那須湯本",37.10,140.00],["板室",37.07,139.94],["塩原",36.97,139.83],["喜連川",36.74,139.90]]],
+[10,"群馬","群馬",10,6,1,1,[["草津",36.62,138.60],["万座",36.63,138.51],["尻焼",36.65,138.66],["四万",36.68,138.79],["沢渡",36.62,138.83],["伊香保",36.50,138.92],["水上",36.78,138.97],["宝川",36.83,139.02],["法師",36.72,138.88],["猿ヶ京",36.75,138.86],["老神",36.76,139.17],["磯部",36.31,138.79],["川原湯",36.55,138.73]]],
+[11,"埼玉","埼玉",10,7,1,1,[["秩父",35.99,139.08],["長瀞",36.10,139.11],["小鹿野",36.02,139.00],["名栗",35.89,139.19],["ときがわ",36.00,139.27]]],
+[12,"千葉","千葉",12,7,1,2,[["養老渓谷",35.25,140.18],["鴨川",35.11,140.10],["勝浦",35.15,140.32],["白子",35.45,140.37],["館山",34.99,139.86],["南房総白浜",34.91,139.94],["犬吠埼",35.71,140.86]]],
+[13,"東京","東京",11,7,1,1,[["奥多摩",35.81,139.10],["秋川渓谷",35.73,139.20],["伊豆大島",34.75,139.36],["式根島",34.33,139.21],["神津島",34.21,139.13],["三宅島",34.08,139.53],["八丈島",33.11,139.79]]],
+[14,"神奈川","神奈川",10,8,2,1,[["箱根湯本",35.23,139.10],["宮ノ下",35.24,139.06],["強羅",35.25,139.04],["仙石原",35.26,139.00],["芦ノ湖",35.20,139.03],["湯河原",35.15,139.08],["七沢",35.45,139.30],["鶴巻",35.38,139.27],["中川",35.43,139.08]]],
+[15,"新潟","新潟",10,5,1,1,[["越後湯沢",36.94,138.81],["松之山",37.10,138.62],["栃尾又",37.20,139.07],["月岡",37.86,139.30],["咲花",37.73,139.24],["岩室",37.70,138.79],["瀬波",38.21,139.47],["赤倉",36.89,138.17],["燕",36.91,138.13],["鵜の浜",37.16,138.33],["佐渡相川",38.03,138.24],["貝掛",36.88,138.79]]],
+[16,"富山","富山",9,5,1,1,[["宇奈月",36.81,137.58],["小川",36.88,137.62],["金太郎",36.80,137.43],["みくりが池",36.58,137.60],["庄川",36.55,136.98],["氷見",36.86,136.99],["山田",36.62,137.08]]],
+[17,"石川","石川",8,5,1,1,[["和倉",37.09,136.92],["輪島",37.39,136.90],["湯涌",36.49,136.75],["粟津",36.36,136.43],["片山津",36.33,136.38],["山代",36.29,136.36],["山中",36.25,136.37],["白山中宮",36.31,136.71],["白峰",36.17,136.62]]],
+[18,"福井","福井",7,5,1,1,[["あわら",36.22,136.19],["越前",35.98,135.97],["九頭竜",35.90,136.70],["若狭小浜",35.49,135.75]]],
+[19,"山梨","山梨",9,7,1,1,[["石和",35.66,138.63],["湯村",35.68,138.55],["下部",35.43,138.47],["西山",35.47,138.26],["奈良田",35.58,138.23],["増富",35.88,138.53],["河口湖",35.50,138.76],["山中湖",35.42,138.87]]],
+[20,"長野","長野",9,6,1,1,[["白骨",36.11,137.64],["乗鞍高原",36.11,137.60],["中房",36.39,137.75],["白馬八方",36.70,137.85],["小谷",36.79,137.91],["野沢",36.92,138.45],["渋・湯田中",36.73,138.43],["戸倉上山田",36.49,138.14],["別所",36.35,138.15],["鹿教湯",36.36,138.04],["浅間",36.26,137.99],["上諏訪",36.04,138.11],["奥蓼科",36.07,138.29],["高峰",36.42,138.46],["昼神",35.43,137.73]]],
+[21,"岐阜","岐阜",8,6,1,1,[["下呂",35.81,137.24],["濁河",35.93,137.45],["平湯",36.19,137.56],["福地",36.23,137.56],["新穂高",36.29,137.58],["飛騨高山",36.14,137.26],["白川郷",36.26,136.91],["長良川",35.44,136.78],["恵那峡",35.47,137.41]]],
+[22,"静岡","静岡",9,8,1,1,[["熱海",35.10,139.07],["伊東",34.97,139.10],["熱川",34.82,139.07],["稲取",34.77,139.04],["下田",34.68,138.95],["堂ヶ島",34.78,138.77],["土肥",34.91,138.79],["修善寺",34.97,138.93],["伊豆長岡",35.04,138.93],["梅ヶ島",35.29,138.34],["寸又峡",35.17,138.10],["舘山寺",34.75,137.62]]],
+[23,"愛知","愛知",8,7,1,1,[["湯谷",35.02,137.62],["西浦",34.75,137.23],["三谷",34.82,137.30],["吉良",34.80,137.06],["猿投",35.17,137.18],["犬山",35.38,136.95]]],
+[24,"三重","三重",7,7,1,2,[["湯の山",35.01,136.47],["長島",35.06,136.69],["榊原",34.73,136.36],["鳥羽",34.48,136.84],["賢島",34.30,136.82],["入鹿",33.88,136.04]]],
+[25,"滋賀","滋賀",7,6,1,1,[["おごと",35.11,135.90],["長浜太閤",35.38,136.27],["須賀谷",35.46,136.30],["十二坊",34.95,136.10]]],
+[26,"京都","京都",6,6,1,1,[["湯の花",35.04,135.49],["嵐山",35.01,135.68],["大原",35.12,135.83],["くらま",35.12,135.77],["天橋立",35.57,135.19],["夕日ヶ浦",35.66,134.97]]],
+[27,"大阪","大阪",5,7,1,1,[["箕面",34.84,135.47],["伏尾",34.85,135.43],["犬鳴山",34.33,135.38],["石切",34.68,135.63]]],
+[28,"兵庫","兵庫",5,6,1,1,[["有馬",34.80,135.25],["宝塚",34.81,135.36],["城崎",35.63,134.81],["湯村",35.55,134.49],["浜坂",35.62,134.45],["塩田",34.95,134.71],["洲本",34.34,134.90]]],
+[29,"奈良","奈良",6,7,1,1,[["十津川",33.98,135.79],["洞川",34.26,135.87],["入之波",34.31,136.03],["吉野",34.37,135.86]]],
+[30,"和歌山","和歌山",6,8,1,1,[["白浜",33.68,135.35],["椿",33.61,135.38],["勝浦",33.63,135.94],["湯の峰",33.84,135.75],["川湯",33.83,135.72],["龍神",33.95,135.56],["花山",34.23,135.20]]],
+[31,"鳥取","鳥取",4,6,1,1,[["三朝",35.41,133.88],["関金",35.38,133.77],["はわい",35.48,133.88],["皆生",35.45,133.36],["鳥取",35.50,134.23],["岩井",35.58,134.36]]],
+[32,"島根","島根",3,6,1,1,[["玉造",35.41,133.01],["松江しんじ湖",35.47,133.05],["湯の川",35.38,132.87],["三瓶",35.14,132.62],["温泉津",35.09,132.35],["有福",34.93,132.15]]],
+[33,"岡山","岡山",4,7,1,1,[["湯原",35.19,133.70],["真賀",35.22,133.66],["奥津",35.20,133.87],["湯郷",35.03,134.20]]],
+[34,"広島","広島",3,7,1,1,[["宮浜",34.29,132.36],["湯来",34.46,132.24],["鞆の浦",34.38,133.38],["君田",34.95,132.88]]],
+[35,"山口","山口",2,7,1,1,[["湯田",34.17,131.46],["長門湯本",34.33,131.18],["俵山",34.27,131.08],["川棚",34.15,130.97],["湯野",34.06,131.68]]],
+[36,"徳島","徳島",4,9,1,1,[["祖谷",33.85,133.85],["大歩危",33.89,133.77],["月ヶ谷",33.88,134.33]]],
+[37,"香川","香川",4,8,1,1,[["塩江",34.17,134.07],["こんぴら",34.18,133.81],["小豆島",34.49,134.25]]],
+[38,"愛媛","愛媛",3,8,1,1,[["道後",33.85,132.79],["奥道後",33.87,132.83],["鈍川",33.98,132.92],["湯ノ浦",34.04,132.98]]],
+[39,"高知","高知",3,9,1,1,[["足摺",32.73,133.02],["馬路",33.56,134.05]]],
+[40,"福岡","福岡",1,8,1,1,[["原鶴",33.37,130.76],["筑後川",33.34,130.73],["二日市",33.49,130.52],["脇田",33.69,130.63],["船小屋",33.18,130.50]]],
+[41,"佐賀","佐賀",0,8,1,1,[["嬉野",33.10,129.99],["武雄",33.19,130.02],["古湯",33.36,130.24],["熊の川",33.32,130.27]]],
+[42,"長崎","長崎",0,9,1,1,[["雲仙",32.74,130.26],["小浜",32.73,130.21],["島原",32.78,130.37]]],
+[43,"熊本","熊本",1,9,1,1,[["黒川",33.08,131.14],["杖立",33.17,131.02],["内牧",32.95,131.06],["地獄",32.88,131.03],["菊池",32.98,130.81],["山鹿",33.02,130.69],["日奈久",32.43,130.62],["人吉",32.21,130.76]]],
+[44,"大分","大分",2,9,1,1,[["別府",33.28,131.49],["鉄輪",33.31,131.47],["明礬",33.31,131.45],["由布院",33.26,131.36],["湯平",33.20,131.29],["長湯",33.07,131.33],["筋湯",33.13,131.15],["天ヶ瀬",33.29,131.10],["宝泉寺",33.27,131.15]]],
+[45,"宮崎","宮崎",2,10,1,1,[["京町",32.00,130.85],["北郷",31.65,131.33]]],
+[46,"鹿児島","鹿児島",1,10,1,1,[["指宿",31.23,130.64],["霧島",31.87,130.82],["妙見",31.83,130.75],["屋久島",30.35,130.53]]],
+[47,"沖縄","沖縄",0,11,1,1,[["瀬長島",26.18,127.64],["北谷",26.31,127.75]]],
+];
+const P=Object.fromEntries(PREFS.map(p=>[p[0],{id:p[0],name:p[1],short:p[2],spots:p[7]}]));
+const R1=new Set("登別 定山渓 洞爺湖 湯の川 阿寒湖 層雲峡 朝里川 十勝川 浅虫 大鰐 古牧 花巻 繋 鳴子 秋保 作並 松島 遠刈田 男鹿 田沢湖高原 蔵王 かみのやま 天童 赤湯 湯野浜 飯坂 東山 磐梯熱海 芦ノ牧 いわき湯本 大洗 筑波山 鬼怒川 那須湯本 塩原 喜連川 草津 伊香保 水上 磯部 秩父 長瀞 鴨川 勝浦 館山 白子 奥多摩 秋川渓谷 箱根湯本 宮ノ下 強羅 芦ノ湖 湯河原 仙石原 鶴巻 越後湯沢 月岡 岩室 瀬波 宇奈月 氷見 庄川 和倉 山代 山中 片山津 粟津 湯涌 あわら 石和 湯村 河口湖 山中湖 上諏訪 戸倉上山田 別所 浅間 昼神 渋・湯田中 白馬八方 下呂 飛騨高山 長良川 平湯 熱海 伊東 修善寺 伊豆長岡 熱川 下田 舘山寺 稲取 西浦 三谷 犬山 吉良 湯の山 長島 鳥羽 賢島 おごと 長浜太閤 嵐山 天橋立 湯の花 箕面 有馬 城崎 宝塚 洲本 白浜 皆生 三朝 鳥取 はわい 玉造 松江しんじ湖 湯郷 湯原 宮浜 湯田 長門湯本 こんぴら 道後 奥道後 二日市 原鶴 嬉野 武雄 雲仙 小浜 内牧 山鹿 人吉 菊池 別府 由布院 鉄輪 指宿 霧島 京町 瀬長島 北谷".split(" "));
+const R3=new Set("豊富 然別湖 カルルス ウトロ 下風呂 薬研 青荷 夏油 藤七 須川 国見 峩々 玉川 後生掛 泥湯 森吉山 肘折 白布 二岐 甲子 岳 奥鬼怒 川俣 万座 尻焼 法師 宝川 沢渡 三宅島 神津島 式根島 八丈島 中川 松之山 栃尾又 貝掛 燕 小川 みくりが池 白峰 白山中宮 九頭竜 奈良田 増富 西山 白骨 中房 高峰 奥蓼科 小谷 濁河 梅ヶ島 寸又峡 入鹿 入之波 十津川 龍神 有福 三瓶 真賀 祖谷 月ヶ谷 馬路 熊の川 地獄 筋湯 宝泉寺 屋久島".split(" "));
+// 和歌山の勝浦は中級寄りだが温泉街として初級扱い
+for(const p of Object.values(P))p.spots=p.spots.map(([n,la,lo])=>[n,la,lo,R1.has(n)?1:R3.has(n)?3:2]);
+const RANK={0:"その他",1:"初級",2:"中級",3:"上級"};
+const rankOf=(pref,name)=>{const sp=P[pref]?.spots.find(x=>x[0]===name);return sp?sp[3]:0};
+let rankFilter=0; // 0=すべて
+try{rankFilter=+(localStorage.getItem("onsen-kunitori-rank")||0)||0}catch{}
+const rankChip=r=>`<span class="chip c${r}">${RANK[r]}</span>`;
+const rankBar=()=>[0,1,2,3].map(r=>`<button type="button" class="rk" data-rank="${r}" aria-pressed="${rankFilter===r}">${r?`<i style="background:var(--r${r})"></i>`:""}${r?RANK[r]:"すべて"}</button>`).join("");
+function setRank(r){rankFilter=r;try{localStorage.setItem("onsen-kunitori-rank",String(r))}catch{}render()}
+const fullName=id=>{const n=P[id].name;return id===1?n:id===13?n+"都":(id===26||id===27)?n+"府":n+"県"};
+
+let records=[]; // {id,pref,spot,facility,date,memo}
+let store=null; // {add(rec), remove(id)}
+let openPref=null, pickSpot="";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const fmt=d=>d?d.replace(/-/g,"."):"";
+
+const photoLink=r=>r.photo&&/^https?:\/\//i.test(r.photo)?`<a class="ph" href="${esc(r.photo)}" target="_blank" rel="noopener noreferrer">📷 写真を見る</a>`:"";
+function byPref(){const m={};for(const r of records)(m[r.pref]??=[]).push(r);for(const k in m)m[k].sort((a,b)=>a.date<b.date?1:-1);return m}
+
+function renderGrid(){
+  const m=byPref(), g=$("#grid");
+  g.innerHTML=PREFS.map(p=>{
+    const list=m[p[0]]||[], n=list.length, lv=n>=4?3:n>=2?2:n?1:0;
+    return `<button class="tile ${lv?"l"+lv:""} ${p[2].length>2&&p[5]===1?"w3":""}" data-pref="${p[0]}" style="grid-column:${p[3]+1}/span ${p[5]};grid-row:${p[4]+1}/span ${p[6]};${p[5]>1&&p[6]>1?"aspect-ratio:1":p[5]>1?"aspect-ratio:2/1":p[6]>1?"aspect-ratio:1/2":""}" aria-label="${fullName(p[0])} ${n}施設">${p[2]}${n?'<span class="stamp">湯</span>':""}</button>`
+  }).join("");
+  const done=Object.keys(m).length;
+  $("#sPref").innerHTML=done+"<small>/47</small>";
+  $("#sFac").textContent=records.length;
+  $("#barFill").style.width=(done/47*100)+"%";
+}
+function renderRecent(){
+  const r=[...records].sort((a,b)=>a.date<b.date?1:-1).slice(0,8);
+  $("#recent").innerHTML=r.length?r.map(x=>`<li><time>${fmt(x.date)}</time><span class="nm"><b>${esc(x.facility)}</b>${x.spot?`<small>${rankChip(rankOf(x.pref,x.spot))} ${esc(x.spot)}温泉</small>`:""}${photoLink(x)}</span><span class="pf">${P[x.pref].name}</span></li>`).join("")
+    :`<li class="empty">まだ記録がありません。地図の都道府県をタップして、最初の温泉を登録しましょう。</li>`;
+}
+function visitedSpots(){ // key pref|spot -> {pref,spot,rank,first,n}
+  const m=new Map();
+  for(const r of records){if(!r.spot)continue;const k=r.pref+"|"+r.spot;const v=m.get(k)||{pref:r.pref,spot:r.spot,rank:rankOf(r.pref,r.spot),first:r.date,n:0};
+    v.n++;if(r.date<v.first)v.first=r.date;m.set(k,v)}
+  return m;
+}
+function renderRanks(){
+  $("#rankBar").innerHTML=rankBar();
+  const vs=visitedSpots(), tot={1:0,2:0,3:0}, got={1:0,2:0,3:0};
+  for(const p of Object.values(P))for(const sp of p.spots)tot[sp[3]]++;
+  for(const v of vs.values())if(v.rank)got[v.rank]++;
+  $("#rstats").innerHTML=[1,2,3].map(r=>`<div class="rstat"><span>${rankChip(r)}</span><b>${got[r]}<small>/${tot[r]}</small></b><span class="mb"><i style="width:${got[r]/tot[r]*100}%;background:var(--r${r})"></i></span></div>`).join("");
+}
+function renderVisited(){
+  const vs=[...visitedSpots().values()].filter(v=>!rankFilter||v.rank===rankFilter);
+  $("#vCount").textContent=vs.length?`${vs.length}か所${rankFilter?"（"+RANK[rankFilter]+"）":""}`:"";
+  if(!vs.length){$("#visited").innerHTML=`<p class="empty">${rankFilter?RANK[rankFilter]+"の温泉地はまだ廻っていません。":"まだ廻った温泉地はありません。記録すると県ごとにここへ並びます。"}</p>`;return}
+  const g={};for(const v of vs)(g[v.pref]??=[]).push(v);
+  $("#visited").innerHTML=PREFS.filter(p=>g[p[0]]).map(p=>{const list=g[p[0]].sort((a,b)=>a.first<b.first?-1:1);
+    return `<div class="vgroup"><h4><span>${fullName(p[0])}</span><button type="button" data-open="${p[0]}">地図を開く</button></h4>${list.map(v=>`<div class="vrow">${rankChip(v.rank)}<span>${esc(v.spot)}温泉</span><small>${fmt(v.first)}${v.n>1?"・"+v.n+"施設":""}</small></div>`).join("")}</div>`}).join("");
+}
+function render(){renderGrid();renderRanks();renderVisited();renderRecent();if(openPref)renderDrawer()}
+
+function spotMap(pref,visitedSpots){
+  const s=P[pref].spots; const W=480,H=360,pad=40;
+  const lats=s.map(x=>x[1]),lngs=s.map(x=>x[2]);
+  const la0=Math.min(...lats),la1=Math.max(...lats),lo0=Math.min(...lngs),lo1=Math.max(...lngs);
+  const k=Math.cos((la0+la1)/2*Math.PI/180);
+  const dx=Math.max((lo1-lo0)*k,0.05),dy=Math.max(la1-la0,0.05);
+  const sc=Math.min((W-pad*2)/dx,(H-pad*2)/dy);
+  const cx=(lo0+lo1)/2,cy=(la0+la1)/2;
+  const X=lng=>W/2+(lng-cx)*k*sc, Y=lat=>H/2-(lat-cy)*sc;
+  let grid="";for(let i=1;i<6;i++)grid+=`<line x1="${W*i/6}" y1="0" x2="${W*i/6}" y2="${H}" stroke="var(--line)" stroke-dasharray="2 4"/>`;
+  for(let i=1;i<5;i++)grid+=`<line x1="0" y1="${H*i/5}" x2="${W}" y2="${H*i/5}" stroke="var(--line)" stroke-dasharray="2 4"/>`;
+  const pts=s.map(([nm,la,lo,rk])=>({nm,rk,x:X(lo),y:Y(la),v:visitedSpots.has(nm)})).filter(p=>!rankFilter||p.rk===rankFilter);
+  const fs=pts.length>10?12:13, boxes=pts.map(p=>({x:p.x-7,y:p.y-7,w:14,h:14}));
+  const hit=(b)=>b.x<2||b.x+b.w>W-2||b.y<2||b.y+b.h>H-2||boxes.some(o=>b.x<o.x+o.w&&b.x+b.w>o.x&&b.y<o.y+o.h&&b.y+b.h>o.y);
+  const labels=pts.map(p=>{
+    const w=[...p.nm].length*fs+2,h=fs+2;
+    const c=[[p.x+10,p.y-h/2,"start"],[p.x-10-w,p.y-h/2,"end"],[p.x-w/2,p.y-12-h,"middle"],[p.x-w/2,p.y+11,"middle"],
+             [p.x+8,p.y-h-4,"start"],[p.x+8,p.y+4,"start"],[p.x-8-w,p.y-h-4,"end"],[p.x-8-w,p.y+4,"end"]];
+    let pick=c.find(([x,y])=>!hit({x,y,w,h}))||c[0];
+    boxes.push({x:pick[0],y:pick[1],w,h});
+    const tx=pick[2]==="start"?pick[0]:pick[2]==="end"?pick[0]+w:pick[0]+w/2;
+    return {tx,ty:pick[1]+h-3,anchor:pick[2]};
+  });
+  const dots=pts.map((p,i)=>{const L=labels[i];
+    return `<g class="spot" data-spot="${esc(p.nm)}" style="cursor:pointer" tabindex="0" role="button" aria-label="${esc(p.nm)}温泉 ${RANK[p.rk]}${p.v?"（訪問済み）":""}">
+      <circle cx="${p.x}" cy="${p.y}" r="12" fill="transparent"/>
+      ${p.v?`<circle cx="${p.x}" cy="${p.y}" r="11" fill="none" stroke="var(--seal)" stroke-width="2"/>`:""}
+      <circle cx="${p.x}" cy="${p.y}" r="${p.v?7:5.5}" fill="${p.v?`var(--r${p.rk})`:"var(--paper)"}" stroke="var(--r${p.rk})" stroke-width="2.5"/>
+      <text x="${L.tx}" y="${L.ty}" text-anchor="${L.anchor}" font-size="${fs}" font-weight="${p.v?700:500}" fill="${p.v?"var(--ink)":"var(--muted)"}" font-family="var(--font-body)" paint-order="stroke" stroke="var(--paper)" stroke-width="3">${esc(p.nm)}</text></g>`}).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${fullName(pref)}の主な温泉地">${grid}
+    <g transform="translate(${W-20},22)"><path d="M0,-12 L5,4 L0,1 L-5,4Z" fill="var(--muted)"/><text y="16" text-anchor="middle" font-size="10" fill="var(--muted)">N</text></g>${dots}</svg>`;
+}
+
+function renderDrawer(){
+  const id=openPref, list=byPref()[id]||[], first=list.length?list[list.length-1].date:null;
+  const visited=new Set(list.map(r=>r.spot).filter(Boolean));
+  const spots=P[id].spots.map(s=>s[0]);
+  const d=$("#drawer");
+  const keep={date:d.querySelector("#fDate")?.value,fac:d.querySelector("#fFac")?.value,memo:d.querySelector("#fMemo")?.value,photo:d.querySelector("#fPhoto")?.value,other:d.querySelector("#fOther")?.value};
+  d.innerHTML=`
+  <div class="dhead"><div>
+    <h3 id="dName">${fullName(id)}</h3>
+    <p>${list.length?`<span class="seal"><em>制</em>${fmt(first)} 制覇</span>　${list.length}施設`:"まだ未踏の地です"}</p>
+  </div><button class="close" id="dClose" aria-label="閉じる">×</button></div>
+  <div class="ranks">${rankBar()}</div>
+  <div class="pmap">${P[id].spots.some(x=>!rankFilter||x[3]===rankFilter)?spotMap(id,visited):`<p class="empty" style="padding:24px 12px">この県には${RANK[rankFilter]}の温泉地が入っていません。</p>`}
+    <div class="cap">${[1,2,3].map(r=>{const a=P[id].spots.filter(x=>x[3]===r);return a.length?`${rankChip(r)} ${a.filter(x=>visited.has(x[0])).length}/${a.length}`:""}).filter(Boolean).join("　")}<br>塗りつぶしの点＝訪問済み（位置はおおよそ）。点をタップすると下の記録欄に入ります。</div></div>
+  <div class="card">
+    <h2>温泉を記録</h2>
+    <form id="fAdd">
+      <label>達成年月日<input id="fDate" type="date" required value="${esc(keep.date||today())}"></label>
+      <label>温泉地<select id="fSpot">${[1,2,3].map(r=>{const a=P[id].spots.filter(x=>x[3]===r);return a.length?`<optgroup label="${RANK[r]}">${a.map(x=>`<option ${x[0]===pickSpot?"selected":""}>${esc(x[0])}</option>`).join("")}</optgroup>`:""}).join("")}<option value="" ${pickSpot===""?"selected":""}>その他・地図にない温泉</option></select></label>
+      <label class="full" id="fOtherWrap" ${pickSpot===""?"":"hidden"}>温泉地名（任意）<input id="fOther" maxlength="40" placeholder="例：〇〇温泉" value="${esc(keep.other||"")}"></label>
+      <label class="full">温泉施設<input id="fFac" required maxlength="80" placeholder="例：〇〇旅館、△△共同浴場" value="${esc(keep.fac||"")}"></label>
+      <label class="full">写真のリンク（任意）<input id="fPhoto" type="url" inputmode="url" placeholder="https://photos.app.goo.gl/… など" value="${esc(keep.photo||"")}"></label>
+      <label class="full">メモ（任意）<input id="fMemo" maxlength="200" placeholder="泉質、感想など" value="${esc(keep.memo||"")}"></label>
+      <div class="full" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button class="btn" id="fBtn">記録する</button><span class="msg" id="fMsg"></span></div>
+    </form>
+  </div>
+  <div class="card">
+    <h2>入った温泉（${list.length}）</h2>
+    <ul class="log">${list.length?list.map(r=>`<li><time>${fmt(r.date)}</time><span class="nm"><b>${esc(r.facility)}</b><small>${r.spot?rankChip(rankOf(id,r.spot))+" "+esc(r.spot)+"温泉":"その他"}${r.memo?"・"+esc(r.memo):""}</small>${photoLink(r)}</span><button class="del" data-del="${esc(r.id)}">削除</button></li>`).join("")
+      :`<li class="empty">記録するとここに並び、地図が色づきます。</li>`}</ul>
+  </div>`;
+}
+
+function openDrawer(id){openPref=id;pickSpot="";$("#drawer").innerHTML="";renderDrawer();$("#scrim").hidden=false;$("#drawer").hidden=false;$("#dClose").focus()}
+function closeDrawer(){const id=openPref;openPref=null;$("#scrim").hidden=true;$("#drawer").hidden=true;$(`.tile[data-pref="${id}"]`)?.focus()}
+
+$("#grid").addEventListener("click",e=>{const t=e.target.closest(".tile");if(t)openDrawer(+t.dataset.pref)});
+$("#scrim").addEventListener("click",closeDrawer);
+document.addEventListener("click",e=>{const b=e.target.closest(".rk");if(b){setRank(+b.dataset.rank);return}
+  const o=e.target.closest("[data-open]");if(o)openDrawer(+o.dataset.open)});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&openPref)closeDrawer()});
+$("#drawer").addEventListener("click",async e=>{
+  if(e.target.closest("#dClose"))return closeDrawer();
+  const sp=e.target.closest(".spot");if(sp){pickSpot=sp.dataset.spot;$("#fSpot").value=pickSpot;$("#fOtherWrap").hidden=true;$("#fFac").focus();return}
+  const del=e.target.closest(".del");
+  if(del){ if(!del.classList.contains("sure")){del.classList.add("sure");del.textContent="本当に削除";setTimeout(()=>{if(del.isConnected){del.classList.remove("sure");del.textContent="削除"}},3000);return}
+    del.disabled=true; try{await store.remove(del.dataset.del)}catch(err){del.disabled=false;del.textContent="削除できませんでした"} }
+});
+$("#drawer").addEventListener("change",e=>{if(e.target.id==="fSpot"){pickSpot=e.target.value;$("#fOtherWrap").hidden=e.target.value!==""}});
+$("#drawer").addEventListener("keydown",e=>{const sp=e.target.closest?.(".spot");if(sp&&(e.key==="Enter"||e.key===" ")){e.preventDefault();sp.dispatchEvent(new MouseEvent("click",{bubbles:true}))}});
+$("#drawer").addEventListener("submit",async e=>{
+  e.preventDefault(); const btn=$("#fBtn"),msg=$("#fMsg");
+  const other=$("#fOther").value.trim().replace(/温泉$/,"");
+  const rec={pref:openPref,spot:$("#fSpot").value||other,facility:$("#fFac").value.trim(),date:$("#fDate").value,memo:$("#fMemo").value.trim(),photo:$("#fPhoto").value.trim(),createdAt:Date.now()};
+  if(!rec.facility||!rec.date){msg.textContent="日付と施設名を入れてください";return}
+  if(rec.photo&&!isUrl(rec.photo)){msg.textContent="写真のリンクは https:// から始まるURLを入れてください";return}
+  btn.disabled=true;msg.textContent="";
+  try{await store.add(rec);$("#fFac").value="";$("#fMemo").value="";$("#fOther").value="";$("#fPhoto").value="";pickSpot=P[openPref].spots.some(x=>x[0]===rec.spot)?rec.spot:"";renderDrawer();$("#fMsg").textContent="記録しました";}
+  catch(err){msg.textContent="この端末に保存できませんでした。ブラウザの保存設定を確認してください";btn.disabled=false}
+});
+
+// ---- 保存先：このページを開いている端末のブラウザ（localStorage）
+const LS="onsen-kunitori-v1";
+let canSave=true;
+try{records=JSON.parse(localStorage.getItem(LS)||"[]").filter(r=>r&&P[r.pref])}catch{records=[];canSave=false}
+const LSD="onsen-kunitori-deleted";
+let deleted=[];try{deleted=JSON.parse(localStorage.getItem(LSD)||"[]")}catch{}
+const save=()=>{try{localStorage.setItem(LS,JSON.stringify(records));localStorage.setItem(LSD,JSON.stringify(deleted));return true}catch{return false}};
+const newId=()=>"l"+Date.now()+Math.random().toString(36).slice(2,6);
+store={add:async r=>{records.push({...r,id:newId()});if(!save()&&!dbx.cfg?.refresh){records.pop();throw {code:"local"}}render();dbx.later()},
+       remove:async id=>{records=records.filter(r=>r.id!==id);if(!deleted.includes(id))deleted.push(id);save();render();dbx.later()}};
+$("#storeNote").textContent=canSave
+  ?"記録はこの端末のブラウザ内に保存されます。別の端末やブラウザでは見えないため、ときどき「バックアップを書き出す」で控えを取っておくと安心です。"
+  :"このブラウザでは保存ができない設定になっています（プライベートモードなど）。閉じると記録が消えるので、書き出しで控えを取ってください。";
+render();
+
+// ---- バックアップ
+const isUrl=u=>/^https?:\/\/\S+$/i.test(u);
+$("#bExport").addEventListener("click",async()=>{
+  const msg=$("#bMsg"), data=JSON.stringify({app:"onsen-kunitori",version:1,exportedAt:new Date().toISOString(),records},null,1);
+  const filename="onsen-kunitori-"+today()+".json";
+  try{
+    const dl=window.claude?.use?await claude.use("downloads"):null;
+    if(dl){await dl.save({filename,data});msg.textContent="書き出しました";return}
+  }catch(e){msg.textContent="書き出しは取り消されました";return}
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=filename;document.body.append(a);a.click();a.remove();msg.textContent="書き出しました"}
+  catch{msg.textContent="この画面では書き出せませんでした"}
+});
+$("#bImport").addEventListener("change",async e=>{
+  const f=e.target.files[0], msg=$("#bMsg"); if(!f)return;
+  try{
+    const j=JSON.parse(await f.text()); const list=(Array.isArray(j)?j:j.records)||[];
+    const have=new Set(records.map(r=>r.pref+"|"+r.date+"|"+r.facility));
+    let n=0;
+    for(const r of list){ if(!r||!P[r.pref]||!r.date||!r.facility)continue;
+      const key=r.pref+"|"+r.date+"|"+r.facility; if(have.has(key))continue; have.add(key);
+      records.push({pref:+r.pref,spot:String(r.spot||""),facility:String(r.facility),date:String(r.date),memo:String(r.memo||""),photo:isUrl(r.photo||"")?r.photo:"",createdAt:r.createdAt||Date.now(),id:newId()}); n++ }
+    save(); render(); dbx.later(); msg.textContent=n?`${n}件を読み込みました`:"新しい記録はありませんでした";
+  }catch{msg.textContent="このファイルは読み込めませんでした（書き出したJSONファイルを選んでください）"}
+  e.target.value="";
+});
+
+// ---- Dropbox 同期（PKCE。App key だけで動き、秘密鍵は不要）
+// ▼ 配布する人が設定する項目 ▼
+// DBX_APP_KEY : 作者が登録したDropboxアプリの App key。入れると、使う人は「Dropboxにつなぐ」を押すだけになります。
+//               App key は公開して問題ない値です（秘密の App secret は使いません）。空なら各自が App key を入れる方式。
+// DBX_REDIRECT: このHTMLを https のURLで公開する場合のURL（Dropboxアプリの Redirect URIs にも同じURLを登録）。
+//               入れると、許可したあと自動でこのページに戻り、コードの貼り付けが不要になります。
+// PAYPAL_URL : 応援ボタンのリンク（例：https://www.paypal.com/paypalme/あなたのID）。空ならボタンは表示しません。
+const PAYPAL_URL="https://paypal.me/marathonBGM";
+const DBX_APP_KEY="cydjvuoiusg3zwu";
+const DBX_REDIRECT="https://shinichiokabe.github.io/onsen-kunitori/";
+// ▲ ここまで ▲
+const dbxRedirectOn=()=>!!DBX_REDIRECT&&location.href.split(/[?#]/)[0]===DBX_REDIRECT;
+const dbx={
+  K:"onsen-kunitori-dbx", PATH:"/onsen-kunitori.json",
+  cfg:null, verifier:"", authUrl:"", busy:false, timer:0, err:"",
+  load(){try{this.cfg=JSON.parse(localStorage.getItem(this.K)||"null")}catch{this.cfg=null}},
+  store(){try{this.cfg?localStorage.setItem(this.K,JSON.stringify(this.cfg)):localStorage.removeItem(this.K)}catch{}},
+  b64u(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")},
+  async prepare(appKey){
+    this.verifier=this.b64u(crypto.getRandomValues(new Uint8Array(48)));
+    const ch=this.b64u(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(this.verifier)));
+    const q={client_id:appKey,response_type:"code",code_challenge:ch,code_challenge_method:"S256",token_access_type:"offline"};
+    if(dbxRedirectOn()){q.redirect_uri=DBX_REDIRECT;try{sessionStorage.setItem("onsen-dbx-verifier",this.verifier)}catch{}}
+    this.authUrl="https://www.dropbox.com/oauth2/authorize?"+new URLSearchParams(q);
+  },
+  async tokenReq(body){
+    const r=await fetch("https://api.dropboxapi.com/oauth2/token",{method:"POST",body:new URLSearchParams(body)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error_description||j.error||("HTTP "+r.status));
+    return j;
+  },
+  async connect(appKey,code){
+    const body={code,grant_type:"authorization_code",client_id:appKey,code_verifier:this.verifier};
+    if(dbxRedirectOn())body.redirect_uri=DBX_REDIRECT;
+    const j=await this.tokenReq(body);
+    this.cfg={appKey,refresh:j.refresh_token,access:j.access_token,exp:Date.now()+(j.expires_in||14400)*1000,lastSync:0};
+    this.store();
+  },
+  async access(){
+    if(this.cfg.access&&this.cfg.exp>Date.now()+60000)return this.cfg.access;
+    const j=await this.tokenReq({grant_type:"refresh_token",refresh_token:this.cfg.refresh,client_id:this.cfg.appKey});
+    this.cfg.access=j.access_token;this.cfg.exp=Date.now()+(j.expires_in||14400)*1000;this.store();return j.access_token;
+  },
+  async fail(r,step){
+    let t="";try{t=(await r.text()).slice(0,300)}catch{}
+    let hint="";
+    if(/required scope|missing_scope/i.test(t))hint="Dropboxアプリの「権限」で files.content.write と files.content.read にチェックを入れて「送信」したあと、「接続を解除」してつなぎ直してください。";
+    else if(/invalid_access_token|expired_access_token|invalid_grant/i.test(t))hint="接続の期限が切れています。「接続を解除」してつなぎ直してください。";
+    else if(/disabled|user limit|not.*permitted/i.test(t))hint="Dropboxアプリ側の設定で利用が止められています。アプリの作者に知らせてください。";
+    else if(/malformed_path|path/i.test(t))hint="保存先のパスが受け付けられませんでした。";
+    const e=new Error(`${step}でHTTP ${r.status}${t?"："+t:""}`);e.hint=hint;throw e;
+  },
+  async download(){
+    const tok=await this.access();
+    if(!tok)throw Object.assign(new Error("アクセストークンがありません"),{hint:"「接続を解除」してつなぎ直してください。"});
+    const r=await fetch("https://content.dropboxapi.com/2/files/download",{method:"POST",headers:{Authorization:"Bearer "+tok,"Dropbox-API-Arg":JSON.stringify({path:this.PATH})}});
+    if(r.status===409){const t=await r.text().catch(()=>"");if(/not_found/.test(t))return null;await this.fail({status:409,text:async()=>t},"読み込み")}
+    if(!r.ok)await this.fail(r,"読み込み");
+    const txt=await r.text();
+    try{return JSON.parse(txt)}catch{return null}
+  },
+  async upload(obj){
+    const tok=await this.access();
+    const r=await fetch("https://content.dropboxapi.com/2/files/upload",{method:"POST",headers:{Authorization:"Bearer "+tok,"Content-Type":"application/octet-stream","Dropbox-API-Arg":JSON.stringify({path:this.PATH,mode:{".tag":"overwrite"},autorename:false,mute:true})},body:new Blob([JSON.stringify(obj)],{type:"application/octet-stream"})});
+    if(!r.ok)await this.fail(r,"保存");
+  },
+  async sync(){
+    if(!this.cfg?.refresh||this.busy)return;
+    this.busy=true;this.err="";this.hint="";renderDbx();
+    try{
+      const remote=await this.download()||{records:[],deleted:[]};
+      const del=new Set([...deleted,...(remote.deleted||[])]);
+      const map=new Map();
+      for(const r of [...(remote.records||[]),...records])if(r&&r.id&&P[r.pref]&&!del.has(r.id))map.set(r.id,r);
+      records=[...map.values()];deleted=[...del];save();render();
+      await this.upload({app:"onsen-kunitori",version:1,updatedAt:new Date().toISOString(),records,deleted});
+      this.cfg.lastSync=Date.now();this.store();
+    }catch(e){this.err=String(e.message||e);this.hint=e.hint||""}
+    this.busy=false;renderDbx();
+  },
+  later(){if(!this.cfg?.refresh)return;clearTimeout(this.timer);this.timer=setTimeout(()=>this.sync(),1500)},
+  async disconnect(){const k=DBX_APP_KEY||this.cfg?.appKey||"";this.cfg=null;this.err="";this.hint="";this.store();this.authUrl="";if(k){try{await this.prepare(k)}catch{}}renderDbx()}
+};
+function renderDbx(){
+  const box=$("#dbxBox"),st=$("#dbxState"),c=dbx.cfg;
+  if(c?.refresh){
+    st.textContent="このブラウザ ＋ Dropbox";
+    const t=c.lastSync?new Date(c.lastSync).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}):"まだ";
+    box.innerHTML=`<div class="dbx">
+      <div class="ok"><i></i>Dropboxに接続中</div>
+      <p class="sub" style="margin:0">記録を追加・削除するたびに Dropbox の <code>アプリ</code> フォルダ内の <code>onsen-kunitori.json</code> へ自動で保存します。ほかの端末でも同じDropboxアカウントでつなぐと、記録がまとまります。</p>
+      <p class="sub" style="margin:0">最終同期：${dbx.busy?"同期中…":esc(t)}</p>
+      ${dbx.err?`<div class="msg" style="margin:0;display:flex;flex-direction:column;gap:6px"><span>同期できませんでした。${esc(dbx.hint||"通信状況を確かめて「今すぐ同期」を押してください。")}</span><code style="color:var(--muted);font-size:11.5px;white-space:pre-wrap">${esc(dbx.err)}</code></div>`:""}
+      <div class="row"><button class="btn" type="button" id="dbxSync" ${dbx.busy?"disabled":""}>今すぐ同期</button><button class="btn ghost" type="button" id="dbxOff">接続を解除</button></div>
+    </div>`;
+  }else if(DBX_APP_KEY){
+    st.textContent="このブラウザ";
+    const ready=!!dbx.authUrl, redir=dbxRedirectOn();
+    box.innerHTML=`<div class="dbx">
+      <p class="sub" style="margin:0">いまは、この端末のブラウザだけに保存しています。Dropboxにつなぐと、記録があなたのDropboxにも保存され、スマホとパソコンで同じ記録を使えます。記録はあなたのDropboxの <code>アプリ</code> フォルダに入り、ほかの人からは見えません。</p>
+      ${redir
+        ?`<div class="row"><a class="btn" id="dbxAuth" href="${esc(dbx.authUrl||"#")}" ${ready?"":'aria-disabled="true" style="opacity:.5;pointer-events:none"'}>Dropboxにつなぐ</a></div>
+          <p class="sub" style="margin:0">Dropboxの画面で「許可」を押すと、自動でこのページに戻ります。</p>`
+        :`<ol>
+          <li><a class="btn" id="dbxAuth" href="${esc(dbx.authUrl||"#")}" target="_blank" rel="noopener" ${ready?"":'aria-disabled="true" style="opacity:.5;pointer-events:none"'}>Dropboxにつなぐ</a> を押し、Dropboxの画面で「許可」します。</li>
+          <li>表示されたコードをコピーして、ここに貼ります。
+            <div class="row" style="margin-top:6px"><input id="dbxCode" placeholder="アクセスコード" autocomplete="off"><button class="btn" type="button" id="dbxGo">接続する</button></div></li>
+        </ol>`}
+      <p class="msg" id="dbxMsg" style="margin:0">${esc(dbx.err&&!c?.refresh?dbx.err:"")}</p>
+    </div>`;
+  }else{
+    st.textContent="このブラウザ";
+    const k=$("#dbxKey")?.value||c?.appKey||"";
+    box.innerHTML=`<div class="dbx">
+      <p class="sub" style="margin:0">いまは、この端末のブラウザだけに保存しています。Dropboxにも保存すると、消えにくくなり、スマホとパソコンで同じ記録を使えます。最初に一度だけ準備が必要です。</p>
+      <ol>
+        <li><a href="https://www.dropbox.com/developers/apps/create" target="_blank" rel="noopener">Dropboxのアプリ作成ページ</a>を開き、「Scoped access」「App folder」を選んで、好きな名前でアプリを作ります。</li>
+        <li>できたアプリの「Permissions」タブで <code>files.content.write</code> と <code>files.content.read</code> にチェックを入れて「Submit」します。</li>
+        <li>「Settings」タブの <b>App key</b> をコピーして、下に貼ります。
+          <div class="row" style="margin-top:6px"><input id="dbxKey" placeholder="App key" autocomplete="off" value="${esc(k)}"></div></li>
+        <li><a class="btn ghost" id="dbxAuth" href="${esc(dbx.authUrl||"#")}" target="_blank" rel="noopener" ${dbx.authUrl?"":'aria-disabled="true" style="opacity:.5;pointer-events:none"'}>Dropboxで許可する</a> を押し、「許可」すると表示されるコードをコピーします。</li>
+        <li>コードを貼って接続します。
+          <div class="row" style="margin-top:6px"><input id="dbxCode" placeholder="アクセスコード" autocomplete="off"><button class="btn" type="button" id="dbxGo">接続する</button></div></li>
+      </ol>
+      <p class="msg" id="dbxMsg" style="margin:0"></p>
+    </div>`;
+  }
+}
+document.addEventListener("input",async e=>{
+  if(e.target.id!=="dbxKey")return;
+  const k=e.target.value.trim(), a=$("#dbxAuth");
+  if(!k){dbx.authUrl="";a.removeAttribute("href");a.setAttribute("aria-disabled","true");a.style.cssText="opacity:.5;pointer-events:none";return}
+  try{await dbx.prepare(k);a.href=dbx.authUrl;a.removeAttribute("aria-disabled");a.style.cssText=""}
+  catch{$("#dbxMsg").textContent="このブラウザでは準備ができませんでした（ChromeやSafariの最新版でお試しください）"}
+});
+document.addEventListener("click",async e=>{
+  const id=e.target.id;
+  if(id==="dbxSync")dbx.sync();
+  else if(id==="dbxOff"){if(e.target.dataset.sure){dbx.disconnect()}else{e.target.dataset.sure="1";e.target.textContent="もう一度押すと解除";setTimeout(()=>{if(e.target.isConnected){delete e.target.dataset.sure;e.target.textContent="接続を解除"}},3000)}}
+  else if(id==="dbxGo"){
+    const k=DBX_APP_KEY||$("#dbxKey").value.trim(),code=$("#dbxCode").value.trim(),msg=$("#dbxMsg");
+    if(!k||!code){msg.textContent=DBX_APP_KEY?"アクセスコードを貼ってください":"App key とアクセスコードの両方を入れてください";return}
+    if(!dbx.verifier){msg.textContent="先に「Dropboxで許可する」を押してコードを取得してください";return}
+    e.target.disabled=true;msg.textContent="接続しています…";
+    try{await dbx.connect(k,code);renderDbx();await dbx.sync()}
+    catch(err){e.target.disabled=false;msg.textContent="接続できませんでした（"+(err.message||err)+"）。コードは一度しか使えないので、もう一度「Dropboxで許可する」からやり直してください。";
+      await dbx.prepare(k);const a=$("#dbxAuth");if(a)a.href=dbx.authUrl}
+  }
+});
+dbx.load();
+(async()=>{
+  // https 公開時：Dropboxから戻ってきたら自動で接続
+  const qs=new URLSearchParams(location.search);
+  if(DBX_APP_KEY&&dbxRedirectOn()&&(qs.get("code")||qs.get("error"))){
+    history.replaceState(null,"",DBX_REDIRECT+location.hash);
+    if(qs.get("code")){
+      try{dbx.verifier=sessionStorage.getItem("onsen-dbx-verifier")||"";sessionStorage.removeItem("onsen-dbx-verifier")}catch{}
+      try{await dbx.connect(DBX_APP_KEY,qs.get("code"))}catch(e){dbx.err="接続できませんでした（"+(e.message||e)+"）。もう一度「Dropboxにつなぐ」を押してください。"}
+    }else dbx.err="Dropboxでの許可が取り消されました。";
+  }
+  const key=DBX_APP_KEY||(dbx.cfg?.refresh?"":dbx.cfg?.appKey);
+  if(!dbx.cfg?.refresh&&key){try{await dbx.prepare(key)}catch{}}
+  renderDbx();
+  dbx.sync();
+})();
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")dbx.sync()});
+
+if(/^https:\/\/(www\.)?paypal\.(com|me)\//i.test(PAYPAL_URL)){$("#paypalBtn").href=PAYPAL_URL;$("#supportSec").hidden=false}
+</script>
+</body></html>
